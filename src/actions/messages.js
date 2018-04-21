@@ -1,24 +1,53 @@
-export const addMessage = (key = Date.now(), { content, uid }) => {
+import { database } from "../firebase";
+const messagesRef = database.child("messages");
+
+export const addMessage = (key, { content, uid }) => {
   return {
-    type: 'ADD_MESSAGE',
+    type: "ADD_MESSAGE",
     content,
     key,
-    timeStamp: Date.now(),
     uid
   };
 };
 
-export const removeMessage = (key) => {
+export const removeMessage = key => {
   return {
-    type: 'REMOVE_MESSAGE',
+    type: "REMOVE_MESSAGE",
     key
   };
 };
 
-export const createMessage = (message) => {
-  return addMessage(message);
+// use the promise to clear the input filed after pushed to firebase.
+export const createMessage = ({ content, uid }) => {
+  return dispatch => {
+    const message = {
+      content,
+      uid,
+      timeStamp: Date.now()
+    };
+    messagesRef.push(message);
+  };
 };
 
-export const destroyMessage = (key) => {
-  return removeMessage(key);
+export const destroyMessage = key => {
+  return dispatch => {
+    messagesRef
+      .child(key)
+      .remove()
+      .then(() => {
+        dispatch(removeMessage(key));
+      });
+  };
+};
+
+// dispatch key and message on add or remove
+export const startListeningForMessages = () => {
+  return dispatch => {
+    messagesRef.on("child_added", snapshot => {
+      dispatch(addMessage(snapshot.key, snapshot.val()));
+    });
+    messagesRef.on("child_removed", snapshot => {
+      dispatch(removeMessage(snapshot.key));
+    });
+  };
 };
